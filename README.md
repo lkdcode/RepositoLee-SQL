@@ -44,6 +44,10 @@ mysql > SOURCE [복사한_덤프_파일]
 mysql > SOURCE /tmp/lkdcode.dump 
 ```
 
-## 🔗 [1. 기수성](./1.Cardinality)
+## 🔗 [1. 기수성(Cardinality)](./1.Cardinality)
 
 기수성(Cardinality)을 기준으로 어떤 쿼리가 효율적인지 옵티마이저가 어떻게 판단하고 우리는 어떤 쿼리를 제공해야할지 간단하게 알아본다.
+
+## 🔗 [2. 인덱스 레인지 스캔](./2.IndexRangeScan)
+
+검색해야할 인덱스의 벙뮈가 결정됐을 때 사용하는 방식이다. 읽기 손익분기점과 커버링 인덱스도 같이 알아본다.  

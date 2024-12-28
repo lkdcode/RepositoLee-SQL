@@ -18,7 +18,7 @@ MySQL 에 삽입된 2개의 테이블은 `city` 와 `country` 컬럼만 존재�
 
 - city-high 데이터 요약
 
-```mysql-sql
+```sql
 Total: 10_000
 > city 컬럼 city1 부터 city10000 까지 존재함.
 > country 데이터는 1부터 시작해 10_000까지 존재한다.
@@ -32,7 +32,7 @@ cityN, countryN,
 
 - city-row 데이터 요약
 
-```mysql-sql
+```sql
 Total: 10_000
 > city 컬럼 city1 부터 city10000 까지 존재함.
 > country 데이터는 1부터 시작해 10까지만 존재한다.
@@ -64,7 +64,7 @@ city?, country2,
 
 - tb_city_high 기수성: 1_000
 
-```shell
+```sql
 mysql> EXPLAIN SELECT * FROM tb_city_high WHERE city = 'city9' AND country = 'country9';
 +----+-------------+--------------+------------+------+---------------+------------+---------+-------+------+----------+-------------+
 | id | select_type | table        | partitions | type | possible_keys | key        | key_len | ref   | rows | filtered | Extra       |
@@ -76,7 +76,7 @@ mysql> EXPLAIN SELECT * FROM tb_city_high WHERE city = 'city9' AND country = 'co
 
 - tb_city_row 기수성: 10
 
-```shell
+```sql
 mysql> EXPLAIN SELECT * FROM tb_city_row WHERE city = 'city9' AND country = 'country9';
 +----+-------------+-------------+------------+------+---------------+------------+---------+-------+------+----------+-------------+
 | id | select_type | table       | partitions | type | possible_keys | key        | key_len | ref   | rows | filtered | Extra       |

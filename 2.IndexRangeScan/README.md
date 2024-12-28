@@ -1,39 +1,9 @@
+시작하기 전에 🔗[READY_INDEX.md](../0.common/0.readme/READY_INDEX.md) 를 읽어주세요.  
+
 # 🎯 인덱스 레인지 스캔
 
 검색해야할 인덱스의 범위가 결정됐을 때 해당 범위의 시작 지점부터 마지막 지점까지 읽는 방식을 말한다.  
 인덱스는 항상 정렬되어 있는데 B-Tree 구조에서도 마찬가지다. 이렇게 정렬되어 있는 구조를 통해서 인덱스 레인지 스캔을 할 수 있다.  
-
-### ✅ Ready
-
-대용량의 데이터가 필요하므로 🔗 [Repository: test_db](https://github.com/datacharmer/test_db) 를 참고하여 🔗 [0. data](./0.data/) 디렉토리에 통해 필요한 데이터만 모아 두었습니다. 하나의 MySQL 서버에서 2개의 데이터베이스를 구축하고 하나의 데이터베이스에서는 테이블을 튜닝하고 하나는 하지 않는 것이 비교하면서 확인하기 좋습니다.  
-
-# 🎯 목표에 앞서
-
-사용할 테이블은 🔗 [employees](./0.data/employees.sql) 이므로 간략하게 테이블 구조를 확인하기 바랍니다.  
-
-```sql
-mysql> DESCRIBE employees;
-+------------+---------------+------+-----+---------+-------+
-| Field      | Type          | Null | Key | Default | Extra |
-+------------+---------------+------+-----+---------+-------+
-| emp_no     | int           | NO   | PRI | NULL    |       |
-| birth_date | date          | NO   |     | NULL    |       |
-| first_name | varchar(14)   | NO   |     | NULL    |       |
-| last_name  | varchar(16)   | NO   |     | NULL    |       |
-| gender     | enum('M','F') | NO   |     | NULL    |       |
-| hire_date  | date          | NO   |     | NULL    |       |
-+------------+---------------+------+-----+---------+-------+
-6 rows in set (0.04 sec)
-```
-
-튜닝한 테이블과 튜닝하지 않는 테이블을 두면 직접 비교하기 수월해서 2개의 데이터베이스를 생성하고 똑같은 데이터를 준비합니다.  
-
-```sql
-mysql> CREATE DATABASE normal;
-mysql> CREATE DATABASE tuning;
-```
-
-`normal` 데이터베이스의 테이블들은 튜닝하지 않고 `tuning` 데이터베이스의 테이블들은 튜닝합니다.  
 
 # 🎯 실행계획
 

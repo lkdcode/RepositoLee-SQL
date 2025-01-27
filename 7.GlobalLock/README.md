@@ -19,11 +19,11 @@ $ mysql> ...
 
 # 🎯 Global Lock
 
-`FLUSH TALBES WITH READ LOCK` 명령어로 획득할 수 있다.  
+글로벌 락은 `FLUSH TALBES WITH READ LOCK` 명령어로 획득할 수 있다.  
 MySQL 에서 제공하는 락 중 가장 범위가 크며 `SELECT` 를 제외한 대부분의 DDL과 DML을 실행할 때 해당 쿼리가 대기 상태로 남는다.  
 데이터베이스에 상관없이 전체 서버에 영향을 미치며 여러 세션을 획득한 후 하나의 세션에서 실행해보자.  
 
-- `Session1`
+- `Session1` 글로벌 락 획득
 
 ```sql
 mysql> FLUSH TABLES WITH READ LOCK;
@@ -32,7 +32,7 @@ Query OK, 0 rows affected (0.22 sec)
 
 `Session1` 에서 글로벌 락을 획득한 후 다른 세션에서 조회 관련 쿼리를 실행하면 문제없이 실행되는 것을 볼 수 있다.
 
-- `Session2`
+- `Session2` 조회 쿼리 실행
 
 ```sql
 mysql> SHOW TABLES;
@@ -54,6 +54,8 @@ mysql> SELECT * FROM TB_INNODB;
 ```
 
 현재 연결된 세션 정보도 확인해보자. 테스트를 위해 총 7개의 세션을 연결했으며 글로벌 락 획득 이후 다른 세션들은 모두 아무 작업이 없는 상태다.  
+
+- 세션 정보 확인
 
 ```sql
 mysql> SHOW STATUS LIKE 'Threads_connected';
@@ -100,6 +102,29 @@ Query OK, 1 row affected (8 hours 8 min 45.93 sec)
 mysql> CREATE DATABASE GLOBAL_LOCK;
 ERROR 1007 (HY000): Can't create database 'GLOBAL_LOCK'; database exists
 ```
+
+## 🎯 SequenceDiagram
+
+```mermaid
+sequenceDiagram
+    participant Session1
+    participant Session2
+    participant Session3
+    participant Session4
+
+    Session1 ->> Session1: FLUSH TABLES WITH READ LOCK<br/>🟢 완료
+    Note over Session1, Session4: 글로벌 락 획득
+    Session2 ->> Session2: SELECT or SHOW<br/>🟢 완료
+    
+    Session3 --x Session3: CREATE DATABSE GLOBAL LOCK<br/>🟡 대기
+    Session4 --x Session4: CREATE DATABSE GLOBAL LOCK<br/>🟡 대기
+    Session1 ->> Session1: UNLOCK TABLES<br/>🟢 완료
+    Note over Session1, Session4: 글로벌 락 반납
+    Session3 ->> Session3: CREATE DATABSE GLOBAL LOCK<br/>🟢 완료
+    Session4 ->> Session4: CREATE DATABSE GLOBAL LOCK<br/>🔴 중복 에러
+```
+
+# 🎯 Global Lock
 
 글로벌 락을 획득한 이후에 다른 세션에서의 대기시간이 약 8시간이 발생했는데 이는 설정을 통해 변경할 수 있다.  
 두 명령어를 통해 글로벌 락의 시간을 확인할 수 있는데 Value 컬럼의 28,800 값은 초단위를 나타내며 이는 곧 8시간을 의미한다.  
@@ -195,4 +220,27 @@ Query OK, 1 row affected (2 min 37.59 sec)
 `Session2`가 글로벌 락을 획득하는데 걸린 시간이 2분보다 짧은데 이는 `Session1`에서 조회하는 쿼리를 작성한 후  
 `Session2`에서 글로벌 락을 획득하는 명령어를 타이핑하는데 몇 초가 걸린 것이다.  
 
-위와 같이 글로벌 락은 모든 테이블에 영향을 미치므로 아주 오랜 시간동안 쿼리가 수행되지 않고 기다릴 수 있다.  
+위와 같이 글로벌 락은 모든 테이블에 영향을 미치므로 아주 오랜 시간동안 쿼리가 수행되지 않고 기다릴 수 있다.
+
+## 🎯 SequenceDiagram
+
+```mermaid
+sequenceDiagram
+    participant Session1
+    participant Session2
+    participant Session3
+
+    Session1 -->>+Session1: SELECT *, SLEEP(30) FROM TB_INNODB<br>🟠 실행중
+
+    Session2 --x+Session2: FLUSH TABLES WITH READ LOCK<br/>🟡 대기
+    Session3 --x+Session3: INSERT INTO TB_INNODB VALUES (10)<br>🟡 대기
+
+    Session1 ->>-Session1: SELECT *, SLEEP(30) FROM TB_INNODB<br>🟢 완료
+
+    Session2 ->>-Session2: FLUSH TABLES WITH READ LOCK<br/>🟢 완료
+    Note over Session1, Session3: 글로벌 락 획득
+
+    Session2 ->> Session2: UNLOCK TABLES<br/>🟢 완료
+    Note over Session1, Session3: 글로벌 락 반납
+    Session3 ->>-Session3: INSERT INTO TB_INNODB VALUES (10)<br>🟢 완료
+```

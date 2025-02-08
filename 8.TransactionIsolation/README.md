@@ -132,7 +132,7 @@ sequenceDiagram
 # 🎯 REPEATABLE READ
 
 MySQL의 InnoDB 스토리지 엔진에서 기본으로 사용되는 격리 수준이며, `DIRTY READ`와 `NON-REPEATABLE READ` 문제가 발생하지 않는다.  
-InnoDB 스토리지 엔진에서는 트랜잭션이 ROLLBACK될 가능성에 대비해 변경되기 전 레코드를 언두 공간에 백업해두고 실제 레코드 값을 변경한다.  
+InnoDB 스토리지 엔진에서는 트랜잭션이 `ROLLBACK`될 가능성에 대비해 변경되기 전 레코드를 언두 공간에 백업해두고 실제 레코드 값을 변경한다.  
 이러한 변경 방식을 `MVCC(Multi Version Concurrency Control)`이라 하며  
 `REPEATABLE READ`는 이 `MVCC`를 위해 언두 영역에 백업된 이전 데이터를 이용해 동일 트랜잭션 내에서는 동일한 결과를 보여줄 수 있게 보장한다.  
 
@@ -188,14 +188,46 @@ sequenceDiagram
 4. `Command1`➡️ `UPDATE..`를 통해 `Banana`를 `Tomato`로 업데이트하는 쿼리 발생
 5. `Session2`➡️ `SELECT..`를 통해 여전히 `Banana` 를 조회할 수 있다. (스냅샷을 통해 가능하다.)
 6. `Command1`➡️ `COMMIT`으로 트랜잭션 종료 (`TRX-ID: 10`)
-7. `Session2`➡️ `SELECT..` 를 통해 여전히 `Banana` 를 조회할 수 있다. (스냅샷을 통해 가능하다.)
+7. `Session2`➡️ `SELECT..`를 통해 여전히 `Banana` 를 조회할 수 있다. (스냅샷을 통해 가능하다.)
 8. `Session2`➡️ `COMMIT`으로 트랜잭션 종료 (`TRX-ID: 11`)
 9. `Session2`➡️ `SELECT..`를 통해 `Banana` 조회 불가능.
 10. `Session2`➡️ `SELECT..`를 통해 `Tomato` 조회 가능.
 
 이처럼 트랜잭션이 시작되면 해당 트랜잭션은 스냅샷을 유지하므로 다른 트랜잭션에서 변경한 내용은 보이지 않는다.  
+트랜잭션 종료 후에는 신규로 추가된 `Tomato`를 조회할 수 있는데, 만약 락을 동반하는 읽기 같은 경우에는  
+스냅샷이 아닌 최신 커밋된 데이터를 참조하므로 PHANTOM READ 현상이 나타날 수 있다.  
 
+아래의 요약된 시퀀스 다이어그램을 살펴보자.  
 
+```mermaid
+sequenceDiagram
+    participant Command1
+    participant MySQL Database
+    participant Session2
+    Command1 ->> MySQL Database: BEGIN<br/>(TRX-ID: 10)
+    Session2 ->> MySQL Database: BEGIN<br/>(TRX-ID: 11)
+    Session2 ->> MySQL Database: 현재 시점에 스냅샷 생성
+    Session2 ->>+ MySQL Database: SELECT *<br/>FROM TB_MEMBERS<br/>WHERE name = 'Banana'
+    MySQL Database ->> MySQL Database: TRX-ID:11 트랜잭션 시작 시점<br/>스냅샷 데이터 조회
+    MySQL Database ->>- Session2: id, name, age, nickname<br/>5, Banana, 99, banana123
+    
+    Command1 ->> MySQL Database: UPDATE TB_MEMBERS<br/>SET name = 'Tomato',<br/>age = 22, nickanme = 'tomato123'<br/>WHERE name = 'Banana'
+    Command1 ->> MySQL Database: COMMIT<br/>(TRX-ID: 10)
+    
+    Session2 ->>+ MySQL Database: SELECT *<br/>FROM TB_MEMBERS<br/>WHERE name = 'Banana'<br/> FOR UPDATE
+    MySQL Database ->> MySQL Database: TRX-ID:11 스냅샷 미사용<br/>최신 데이터 참조.
+    MySQL Database ->>- Session2: 결과 없음.
+```
+
+1. `Command1`➡️ `BEGIN` 트랜잭션을 시작하고 `TRX-ID: 10`을 부여받음.
+2. `Session2`➡️ `BEGIN` 트랜잭션을 시작하고 `TRX-ID: 11`을 부여받음. (스냅샷 생성)
+3. `Session2`➡️ `SELECT..`를 통해 `Banana`를 조회할 수 있다.
+4. `Command1`➡️ `UPDATE..`를 통해 `Banana`를 `Tomato`로 업데이트하는 쿼리 발생
+5. `Command1`➡️ `COMMIT`으로 트랜잭션 종료 (`TRX-ID: 10`)
+6. `Session2`➡️ `SELECT.. FOR UPDATE`를 통해 `Banana`를 조회할 수 없다.(최신 데이터 참조)
+
+현재 커밋된 최신 데이터를 대상으로 락을 걸고 결과를 반환하기 때문에 `SELECT.. FOR UPDATE` 외에도  
+`SELECT.. LOCK IN SHARE MODE`로 락을 획득하는 경우에도 최신 데이터를 참조한다.
 
 # 🎯 SERIALIZABLE
 

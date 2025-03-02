@@ -231,28 +231,8 @@ sequenceDiagram
 
 # 🎯 SERIALIZABLE
 
-```mermaid
-
-sequenceDiagram
-    participant Session1 as Session 1 (trx_id = 101)
-    participant Session2 as Session 2 (trx_id = 102)
-    participant MySQL as MySQL (MVCC 관리)
-
-    Note over MySQL: 초기 데이터 (Alice, Bob, Charlie)
-
-    Session1->>MySQL: BEGIN  (trx_id = 101)
-    Session1->>MySQL: SELECT * FROM tb_members
-    Note over Session1: 결과: Alice, Bob, Charlie
-    
-    Session2->>MySQL: BEGIN (trx_id = 102)
-    Session2->>MySQL: INSERT INTO tb_members (name, age) VALUES ('Kiwi', 22)
-    Session2->>MySQL: COMMIT
-    Note over MySQL: 트랜잭션 102에서 'Kiwi' 추가됨
-    
-    Session1->>MySQL: SELECT * FROM tb_members
-    Note over Session1: 결과 변경 없음 (trx_id = 101 기준)
- 
-    Session1->>MySQL: COMMIT
-    Session1->>MySQL: SELECT * FROM tb_members
-    Note over Session1: 결과: Alice, Bob, Charlie, Kiwi (트랜잭션 종료 후 최신 데이터 조회 가능)
-```
+가장 단순한 격리 수준이면서 가장 엄격한 격리 수준이다.  
+쓰기 작업뿐만 아니라 읽기 작업에서도 공유 잠금을 획득해야만 하며, 동시에 다른 트랜잭션은 그러한 레코드를 변경할 수 없다.  
+한 트랜잭션에서 읽고 쓰는 레코드를 다른 트랜잭션에서는 절대 접근할 수 없으므로 동시 처리 성능이 다른 격리 수준에 비해 떨어진다.  
+해당 격리 수준에서는 `PHANTOM READ` 가 발생하지 않지만, InnoDB 스토리지 엔진에서는 갭 락과 넥스트 키 락 덕분에  
+`REPEATABLE READ` 격리 수준에서도 이미 `PHANTOM READ`가 발생하지 않기 때문에 굳이 사용할 필요는 없다.
